@@ -38,13 +38,14 @@ function httpListener(request, response) {
 		}
 
 		const filePath = `${filesFolder}${request.url.split('/').join(path.sep)}`
+		const fileName = path.basename(filePath);
 
 		/* проверяем есть ли соответствующий файл */
 		if (!fs.existsSync(filePath)) {
-			throw ERRORS.NOT_FOUND;
+			throw {...ERRORS.NOT_FOUND, fileName};
 		}
 
-		const fileName = path.basename(filePath);
+		
 		const fileExtension = path.extname(filePath);
 		const contentInfo = getContentInfo(fileExtension);
 		const fileSize = fs.statSync(filePath).size;
@@ -53,7 +54,7 @@ function httpListener(request, response) {
 		response.statusMessage = 'OK';
 		response.setHeader('Content-Type', contentInfo.type);
 		response.setHeader('Content-Length', fileSize);
-		response.setHeader('Cache-Control', 'no-cache');
+		// response.setHeader('Cache-Control', 'no-cache');
 	
 		/* поддерживается ли для такого типа файлов возврат через запрос диапазона */
 		if (contentInfo.rangeSupport) {
@@ -94,7 +95,8 @@ function httpListener(request, response) {
 				/* запрашивается один диапазон */
 				const {start, end} = ranges.byteRangeSet[0];
 				response.setHeader('Content-Range',`bytes ${start}-${end}/${fileSize}`);
-				
+				response.setHeader('Content-Length', ranges.length);
+
 				if (request.method === 'HEAD') {
 					response.end();
 					return null;
@@ -106,7 +108,7 @@ function httpListener(request, response) {
 		} else {
 			/* диапазон не запрашивается или не поддерживается
 			 * возвращаем файл целиком */
-			response.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+			// response.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
 			if (request.method === 'HEAD') {
 				response.end();
